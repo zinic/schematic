@@ -4,6 +4,9 @@ A language written by someone who has no idea how to write a language!
 ## What's it written in?
 RPython! Well, eventually.
 
+## What's it look like?
+[Check it out!](src/schematic/test.sch)
+
 ## Is this a LISP?
 Kinda sorta. Working on defining the syntax better but I want a more lispy
 python so that's what I'm shooting for.
