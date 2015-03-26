@@ -12,6 +12,6 @@ python so that's what I'm shooting for.
 Because bored engineers need to have fun sometimes.
 
 ## License
-[Schmatic is available under the MIT License](http://opensource.org/licenses/MIT)
+[Schematic is available under the MIT License](http://opensource.org/licenses/MIT)
 
 Copyright (c) 2015 John Hopper
