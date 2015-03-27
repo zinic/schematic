@@ -1,6 +1,6 @@
 import copy
 
-from schematic.util import is_callable, is_symbol
+from schematic.util import is_callable, is_symbol, resolve
 from schematic.lang.function import Function
 
 
@@ -23,14 +23,16 @@ class InterpretedFunction(Function):
         self.parameters = parameters
         self.code = code
 
-    def run(self, engine, param_values, scope):
+    def run(self, engine, vparams, scope):
         func_scope = copy.copy(scope)
+        aparams = resolve(engine, func_scope, vparams)
 
-        for i in range(len(self.parameters)):
-            func_scope[self.parameters[i]] = param_values[i]
+        if len(aparams) > 0:
+            for i in range(len(self.parameters)):
+                func_scope[self.parameters[i]] = aparams[i]
 
         return engine.lcall(
-            code=copy.copy(self.code),
+            code=self.code,
             scope=func_scope)
 
     def __str__(self):
@@ -38,17 +40,6 @@ class InterpretedFunction(Function):
             self.name,
             self.parameters,
             self.code)
-
-
-class DefinerFunction(Function):
-
-    def run(self, engine, parameters, scope):
-        name = parameters.pop(0)
-
-        engine.define(
-            name=name,
-            param_defs=parameters.pop(0),
-            code=parameters.pop(0))
 
 
 def lookup(scope, symbol):
@@ -68,16 +59,20 @@ class Engine(object):
 
     def __init__(self, global_scope):
         self._gs = global_scope
-        self._gs['def'] = DefinerFunction()
 
     def define(self, name, param_defs, code):
         self._gs[name] = InterpretedFunction(name, param_defs, code)
 
     def lcall(self, code, scope):
-        if not isinstance(code, list):
-            return self.call(code, _EMPTY_CONTEXT, scope)
-        else:
-            return self.call(code.pop(0), code, scope)
+        # print('lcall({}, ...)'.format(code))
+
+        if isinstance(code, list):
+            code_copy = copy.deepcopy(code)
+            instruction = code_copy.pop(0)
+
+            return self.call(instruction, code_copy, scope)
+
+        return self.call(code, _EMPTY_CONTEXT, scope)
 
     def call(self, symbol, vparams, vscope=None):
         ascope = vscope if vscope is not None else self._gs
@@ -94,7 +89,6 @@ class Engine(object):
         sym_ref = lookup(ascope, symbol)
 
         if isinstance(sym_ref, Function):
-            # print('{}({})'.format(symbol, aparams))
             return sym_ref.run(self, aparams, ascope)
         else:
             return sym_ref

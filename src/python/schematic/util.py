@@ -1,14 +1,15 @@
 from schematic.lang.function import Function
 
 
+_EMPTY = ()
 _CALLABLE_TYPES = [
     Function,
     list
 ]
 
 
-def resolve(engine, scope, objects):
-    return unpack_parameters((engine.lcall(o, scope) for o in objects))
+def resolve(engine, scope, terms=None):
+    return unpack_parameters((engine.lcall(t, scope) for t in terms))
 
 
 def is_symbol(obj):
@@ -27,7 +28,7 @@ def is_callable(obj):
 
 def unpack_parameters(parameters):
     # Symbols are represented as strings, otherwise don't type unpack
-    return (unpack_symbol(s) if isinstance(s, str) else s for s in parameters)
+    return [unpack_symbol(s) if isinstance(s, str) else s for s in parameters]
 
 
 def unpack_symbol(symbol):

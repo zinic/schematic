@@ -1,3 +1,4 @@
+from schematic.util import resolve
 from schematic.lang.function import Function
 
 
@@ -11,6 +12,17 @@ class FalseFunction(Function):
 
     def run(self, engine, parameters, scope):
         return False
+
+
+class DefinerFunction(Function):
+
+    def run(self, engine, parameters, scope):
+        name = parameters.pop(0)
+
+        engine.define(
+            name=name,
+            param_defs=parameters.pop(0),
+            code=parameters.pop(0))
 
 
 class ConditionalFunction(Function):
@@ -34,13 +46,14 @@ class ConditionalFunction(Function):
 class PrintFunction(Function):
 
     def run(self, engine, parameters, scope):
-        content = parameters[0]
-        print(''.join(content))
+        content = resolve(engine, scope, parameters)
+        print(''.join([str(c) for c in content]))
 
 
 GRAMMAR = {
+    'def': DefinerFunction(),
     'true': TrueFunction(),
     'false': FalseFunction(),
-    '.print': PrintFunction(),
-    '.if': ConditionalFunction()
+    'print': PrintFunction(),
+    'if': ConditionalFunction()
 }

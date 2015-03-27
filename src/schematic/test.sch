@@ -1,9 +1,10 @@
-[def print [content]
-    [.print content]]
+[def factoral [num]
+    [if [= 1 num]
+        [num]
+        [* num [factoral [- num 1]]]]]
 
-[def if [condition then otherwise]
-    [.if condition then otherwise]]
+[print [factoral 3]]
 
-[if [= 53 [- 55 [+ 1 1]]]
+[if [= 52 [- 55 [+ 1 2]]]
     [print "test"]
     [print "rar"]]

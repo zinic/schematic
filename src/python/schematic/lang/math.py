@@ -34,6 +34,22 @@ class Accumulate(Function):
         return a + b
 
 
+# [/ 2 1] -> 2
+class Quotient(Function):
+
+    def run(self, engine, parameters, scope):
+        a, b = resolve(engine, scope, parameters)
+        return a / b
+
+
+# [* 2 1] -> 2
+class Product(Function):
+
+    def run(self, engine, parameters, scope):
+        a, b = resolve(engine, scope, parameters)
+        return a * b
+
+
 # [- 1 1] -> 0
 class Subtract(Function):
 
@@ -46,6 +62,8 @@ GRAMMAR = {
     '>': GreaterThan(),
     '<': LessThan(),
     '=': Equals(),
+    '*': Product(),
+    '/': Quotient(),
     '+': Accumulate(),
     '-': Subtract()
 }
