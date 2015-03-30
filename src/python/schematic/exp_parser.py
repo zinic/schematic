@@ -1,5 +1,4 @@
-from schematic.lang.types import Symbol, List
-from schematic.lang.errors import CoreError
+from schematic.lang.core import Symbol, List
 
 
 S_START = 0
@@ -8,31 +7,24 @@ S_LIST_LITERAL = 2
 S_STRING = 3
 S_NUMBER = 4
 S_SYMBOL = 5
-S_NEG_NUM_OR_SYMBOL = 6
-
-ORD_N = ord('n')
-ORD_R = ord('r')
-ORD_T = ord('t')
 
 ORD_TAB = ord('\t')
 ORD_SPACE = ord(' ')
 ORD_NEWLINE = ord('\n')
 ORD_CARRIAGE_RETURN = ord('\r')
 
-ORD_MINUS = ord('-')
 ORD_NUMBER_0 = ord('0')
 ORD_NUMBER_9 = ord('9')
 
-ORD_BACKSLASH = ord('\\')
 ORD_DOUBLE_QUOTE = ord('"')
 ORD_OPEN_BRACKET = ord('[')
 ORD_CLOSE_BRACKET = ord(']')
 
-STR_MINUS = "-"
 
+class BadTokenException(Exception):
 
-class BadTokenException(CoreError):
-    pass
+    def __init__(self, msg):
+        self._msg = msg
 
 
 def is_number(ch_ord):
@@ -75,7 +67,6 @@ def _parse(sin):
     buff = bytearray(1)
     state = S_START
     cursor = doc
-    escaped = False
     number = 0
     number_mag = 1
     accumulator = ByteAccumulator()
@@ -126,30 +117,7 @@ def _parse(sin):
                 number_mag = 10
                 state = S_NUMBER
 
-            elif next_ch == ORD_MINUS:
-                state = S_NEG_NUM_OR_SYMBOL
-
             else:
-                accumulator.append(next_ch)
-                state = S_SYMBOL
-
-        elif state is S_NEG_NUM_OR_SYMBOL:
-            if is_whitespace(next_ch):
-                cursor.append(Symbol(STR_MINUS))
-                state = S_LIST_ITEM
-
-            elif is_number(next_ch):
-                number = -(next_ch - ORD_NUMBER_0)
-                number_mag = 10
-                state = S_NUMBER
-
-            elif next_ch is ORD_CLOSE_BRACKET:
-                cursor.append(Symbol(STR_MINUS))
-                state = S_LIST_ITEM
-                cursor = position_stack.pop()
-
-            else:
-                accumulator.append(ORD_MINUS)
                 accumulator.append(next_ch)
                 state = S_SYMBOL
 
@@ -185,32 +153,11 @@ def _parse(sin):
                 number_mag *= 10
 
         elif state is S_STRING:
-            if escaped:
-                    escaped = False
+            if next_ch == ORD_DOUBLE_QUOTE:
+                cursor.append(accumulator.get())
+                state = S_LIST_ITEM
 
-                    if next_ch == ORD_N:
-                        accumulator.append(ORD_NEWLINE)
-                    elif next_ch == ORD_R:
-                        accumulator.append(ORD_CARRIAGE_RETURN)
-                    elif next_ch == ORD_T:
-                        accumulator.append(ORD_TAB)
-                    elif next_ch == ORD_DOUBLE_QUOTE:
-                        accumulator.append(ORD_DOUBLE_QUOTE)
-                    elif next_ch == ORD_BACKSLASH:
-                        accumulator.append(ORD_BACKSLASH)
-                    else:
-                        raise BadTokenException(
-                            'Unknown escape sequence "\\{}"'.format(
-                                chr(next_ch)))
             else:
-                if next_ch == ORD_DOUBLE_QUOTE:
-                    cursor.append(accumulator.get())
-                    state = S_LIST_ITEM
-
-                elif next_ch == ORD_BACKSLASH:
-                    escaped = True
-
-                else:
-                    accumulator.append(next_ch)
+                accumulator.append(next_ch)
 
     return doc

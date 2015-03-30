@@ -1,19 +1,16 @@
 import copy
 
-from schematic.util import is_callable, is_symbol, resolve
-from schematic.lang.function import Function
+from schematic.util import resolve
+
+from schematic.lang.errors import CoreError
+from schematic.lang.types import Symbol, List, Function
 
 
-_EMPTY_CONTEXT = list()
+_EMPTY_CONTEXT = tuple()
 
 
-class InterperterException(Exception):
-
-    def __init__(self, msg):
-        self.msg = msg
-
-    def __str__(self):
-        return self.msg
+class InterperterException(CoreError):
+    pass
 
 
 class InterpretedFunction(Function):
@@ -25,15 +22,15 @@ class InterpretedFunction(Function):
 
     def run(self, engine, vparams, scope):
         func_scope = copy.copy(scope)
-        aparams = resolve(engine, func_scope, vparams)
+        params = resolve(engine, func_scope, vparams)
 
-        if len(aparams) > 0:
+        if len(params) > 0:
             for i in range(len(self.parameters)):
-                func_scope[self.parameters[i]] = aparams[i]
+                func_scope[self.parameters[i].name] = params[i]
 
         return engine.lcall(
             code=self.code,
-            scope=func_scope)
+            vscope=func_scope)
 
     def __str__(self):
         return 'function {} ({}): {}'.format(
@@ -43,16 +40,13 @@ class InterpretedFunction(Function):
 
 
 def lookup(scope, symbol):
-    if is_symbol(symbol):
-        sym_ref = scope.get(symbol)
+    sym_ref = scope.get(symbol)
 
-        if sym_ref is None:
-            raise InterperterException(
-                msg='Undefined symbol: {}'.format(symbol))
+    if sym_ref is None:
+        raise InterperterException(
+            msg='Undefined symbol: {}'.format(symbol))
 
-        return sym_ref
-    else:
-        return symbol
+    return sym_ref
 
 
 class Engine(object):
@@ -63,54 +57,31 @@ class Engine(object):
     def define(self, name, param_defs, code):
         self._gs[name] = InterpretedFunction(name, param_defs, code)
 
-    def lcall(self, code, scope):
-        # print('lcall({}, ...)'.format(code))
+    def lcall(self, code, vscope=None, a=None):
+        scope = vscope if vscope is not None else self._gs
 
-        if isinstance(code, list):
-            code_copy = copy.deepcopy(code)
-            instruction = code_copy.pop(0)
-
-            return self.call(instruction, code_copy, scope)
+        if isinstance(code, List):
+            return self.call(code[0], code[1:], scope)
 
         return self.call(code, _EMPTY_CONTEXT, scope)
 
-    def call(self, symbol, vparams, vscope=None):
-        ascope = vscope if vscope is not None else self._gs
-        aparams = list()
-
-        for vparam in vparams:
-            if is_symbol(vparam):
-                aparam = ascope.get(vparam)
-                aparams.append(vparam if aparam is None else aparam)
-            else:
-                aparams.append(vparam)
+    def call(self, instruction, params, vscope=None):
+        scope = vscope if vscope is not None else self._gs
 
         # Lookup the symbol
-        sym_ref = lookup(ascope, symbol)
+        if isinstance(instruction, Symbol):
+            sym_ref = lookup(scope, instruction.name)
 
-        if isinstance(sym_ref, Function):
-            return sym_ref.run(self, aparams, ascope)
-        else:
-            return sym_ref
-
-
-def run(context, scope):
-    engine = Engine(scope)
-    opstack = list()
-
-    while True:
-        if context is None or len(context) == 0:
-            if len(opstack) == 0:
-                return
-
-            context = opstack.pop()
-
-        else:
-            instruction = context.pop(0)
-
-            if isinstance(instruction, list):
-                opstack.append(context)
-                context = instruction
+            if isinstance(sym_ref, Function):
+                return sym_ref.run(self, params, scope)
             else:
-                engine.call(instruction, context)
-                context = None
+                return sym_ref
+        else:
+            return instruction
+
+
+def run(code, scope):
+    engine = Engine(scope)
+
+    for statement in code:
+        engine.lcall(statement, scope)

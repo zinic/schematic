@@ -1,5 +1,35 @@
+import os
+import copy
+
 from schematic.util import resolve
-from schematic.lang.function import Function
+
+from schematic.lang.errors import RuntimeError
+from schematic.lang.types import Function, Symbol
+
+
+class WithFunction(Function):
+
+    def run(self, engine, parameters, scope):
+        with_scope = copy.copy(scope)
+
+        for scope_dec in parameters.pop(0):
+            symbol, statement = scope_dec
+            value = engine.lcall(statement, scope)
+            with_scope[symbol.name] = value
+
+        last_value = None
+        while len(parameters) > 0:
+            statement = parameters.pop(0)
+            last_value = engine.lcall(statement, with_scope)
+
+        return last_value
+
+
+class NotFunction(Function):
+
+    def run(self, engine, parameters, scope):
+        value, = resolve(engine, scope, parameters)
+        return not value
 
 
 class TrueFunction(Function):
@@ -17,10 +47,13 @@ class FalseFunction(Function):
 class DefinerFunction(Function):
 
     def run(self, engine, parameters, scope):
-        name = parameters.pop(0)
+        symbol = parameters.pop(0)
+
+        if not isinstance(symbol, Symbol):
+            raise RuntimeError('def function expects a symbol as argument 0')
 
         engine.define(
-            name=name,
+            name=symbol.name,
             param_defs=parameters.pop(0),
             code=parameters.pop(0))
 
@@ -43,17 +76,11 @@ class ConditionalFunction(Function):
             return engine.lcall(otherwise, scope)
 
 
-class PrintFunction(Function):
-
-    def run(self, engine, parameters, scope):
-        content = resolve(engine, scope, parameters)
-        print(''.join([str(c) for c in content]))
-
-
 GRAMMAR = {
-    'def': DefinerFunction(),
+    'with': WithFunction(),
+    'not': NotFunction(),
     'true': TrueFunction(),
     'false': FalseFunction(),
-    'print': PrintFunction(),
-    'if': ConditionalFunction()
+    'def': DefinerFunction(),
+    'if': ConditionalFunction(),
 }

@@ -1,5 +1,13 @@
 from schematic.util import resolve
-from schematic.lang.function import Function
+from schematic.lang.types import Function
+
+
+# [> 0 1] -> False
+class GreaterThanOrEqualTo(Function):
+
+    def run(self, engine, parameters, scope):
+        a, b = resolve(engine, scope, parameters)
+        return a >= b
 
 
 # [> 0 1] -> False
@@ -16,6 +24,14 @@ class LessThan(Function):
     def run(self, engine, parameters, scope):
         a, b = resolve(engine, scope, parameters)
         return a < b
+
+
+# [< 0 1] -> True
+class LessThanOrEqualTo(Function):
+
+    def run(self, engine, parameters, scope):
+        a, b = resolve(engine, scope, parameters)
+        return a <= b
 
 
 # [= 0 0] -> True
@@ -59,7 +75,9 @@ class Subtract(Function):
 
 
 GRAMMAR = {
+    '>=': GreaterThanOrEqualTo(),
     '>': GreaterThan(),
+    '<=': LessThanOrEqualTo(),
     '<': LessThan(),
     '=': Equals(),
     '*': Product(),
