@@ -45,4 +45,5 @@ setup(
     zip_safe=False,
     include_package_data=True,
     packages=find_packages(exclude=['*tests*']),
+    extra_compile_args=['-O3'],
     ext_modules=compile_pyx())

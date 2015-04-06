@@ -154,11 +154,11 @@ cdef List * _parse(FILE *src_fd):
 
         elif state is S_NUMBER:
             if is_whitespace(next_ch):
-                list_append(cursor, instance_wrap_int(number, TYPE_NUMBER))
+                list_append(cursor, instance_wrap_int(number))
                 state = S_LIST_ITEM
 
             elif next_ch is ORD_CLOSE_BRACKET:
-                list_append(cursor, instance_wrap_int(number, TYPE_NUMBER))
+                list_append(cursor, instance_wrap_int(number))
 
                 cursor = _list_ascend(position_stack)
                 state = S_LIST_ITEM

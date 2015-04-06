@@ -9,8 +9,35 @@ from schematic.constants cimport *
 cdef Scope * std_grammar():
     cdef Scope *grammar = scope_new()
 
+    scope_add(grammar, '*', instance_wrap_ptr(
+        &__product, TYPE_NATIVE_FUNC))
+
     scope_add(grammar, '+', instance_wrap_ptr(
         &__accumulate, TYPE_NATIVE_FUNC))
+
+    scope_add(grammar, '-', instance_wrap_ptr(
+        &__subtract, TYPE_NATIVE_FUNC))
+
+    scope_add(grammar, '/', instance_wrap_ptr(
+        &__quotient, TYPE_NATIVE_FUNC))
+
+    scope_add(grammar, '=', instance_wrap_ptr(
+        &__equal, TYPE_NATIVE_FUNC))
+
+    scope_add(grammar, '<', instance_wrap_ptr(
+        &__less_than, TYPE_NATIVE_FUNC))
+
+    scope_add(grammar, '<=', instance_wrap_ptr(
+        &__less_than_or_equal, TYPE_NATIVE_FUNC))
+
+    scope_add(grammar, '>', instance_wrap_ptr(
+        &__greater_than, TYPE_NATIVE_FUNC))
+
+    scope_add(grammar, '>=', instance_wrap_ptr(
+        &__greater_than_or_equal, TYPE_NATIVE_FUNC))
+
+    scope_add(grammar, 'if', instance_wrap_ptr(
+        &__conditional, TYPE_NATIVE_FUNC))
 
     scope_add(grammar, 'def', instance_wrap_ptr(
         &__define_function, TYPE_NATIVE_FUNC))
@@ -19,39 +46,129 @@ cdef Scope * std_grammar():
         &__print_function, TYPE_NATIVE_FUNC))
 
     return grammar
+    
 
-
-cdef List * __resolve(Engine *engine, Node *vargs, Frame *frame):
+cdef Instance * __equal(Engine *engine, Node *vargs, Frame *frame):
     cdef:
-        List *args
-        Node *arg_cursor
-        Instance *inst_cursor
+        List *args = resolve_all(engine, vargs, frame)
+        Node *arg_cursor = args.head
+        Instance *inst_a
+        Instance *inst_b
+        int int_a, int_b, result = False
 
-    args = list_new()
+    inst_a = arg_cursor.value
+    arg_cursor = arg_cursor.next
+    inst_b = arg_cursor.value
 
-    arg_cursor = vargs
-    while arg_cursor != EMPTY_NODE:
-        inst_cursor = <Instance *> arg_cursor.value
+    if inst_a.type == TYPE_NUMBER and inst_b.type == TYPE_NUMBER:
+        int_a = ptr_void_to_int(inst_a.data)
+        int_b = ptr_void_to_int(inst_b.data)
 
-        while inst_cursor != NULL:
-            if inst_cursor.type == TYPE_LIST:
-                inst_cursor = engine_leval(engine, <List *> inst_cursor.data, frame)
+        result = (int_a == int_b)
 
-            elif inst_cursor.type == TYPE_SYMBOL:
-                inst_cursor = engine_eval(engine, inst_cursor, EMPTY_NODE, frame)
+    return instance_wrap_int(result)
 
-            else:
-                list_append(args, inst_cursor)
-                inst_cursor = NULL
 
-        arg_cursor = arg_cursor.next
+cdef Instance * __less_than(Engine *engine, Node *vargs, Frame *frame):
+    cdef:
+        List *args = resolve_all(engine, vargs, frame)
+        Node *arg_cursor = args.head
+        Instance *inst_a
+        Instance *inst_b
+        int int_a, int_b, result = False
 
-    return args
+    inst_a = arg_cursor.value
+    arg_cursor = arg_cursor.next
+    inst_b = arg_cursor.value
+
+    if inst_a.type == TYPE_NUMBER and inst_b.type == TYPE_NUMBER:
+        int_a = ptr_void_to_int(inst_a.data)
+        int_b = ptr_void_to_int(inst_b.data)
+
+        result = (int_a < int_b)
+
+    return instance_wrap_int(result)
+
+
+cdef Instance * __greater_than(Engine *engine, Node *vargs, Frame *frame):
+    cdef:
+        List *args = resolve_all(engine, vargs, frame)
+        Node *arg_cursor = args.head
+        Instance *inst_a
+        Instance *inst_b
+        int int_a, int_b, result = False
+
+    inst_a = arg_cursor.value
+    arg_cursor = arg_cursor.next
+    inst_b = arg_cursor.value
+
+    if inst_a.type == TYPE_NUMBER and inst_b.type == TYPE_NUMBER:
+        int_a = ptr_void_to_int(inst_a.data)
+        int_b = ptr_void_to_int(inst_b.data)
+
+        result = (int_a > int_b)
+
+    return instance_wrap_int(result)
+
+
+cdef Instance * __less_than_or_equal(Engine *engine, Node *vargs, Frame *frame):
+    cdef:
+        List *args = resolve_all(engine, vargs, frame)
+        Node *arg_cursor = args.head
+        Instance *inst_a
+        Instance *inst_b
+        int int_a, int_b, result = False
+
+    inst_a = arg_cursor.value
+    arg_cursor = arg_cursor.next
+    inst_b = arg_cursor.value
+
+    if inst_a.type == TYPE_NUMBER and inst_b.type == TYPE_NUMBER:
+        int_a = ptr_void_to_int(inst_a.data)
+        int_b = ptr_void_to_int(inst_b.data)
+
+        result = (int_a <= int_b)
+
+    return instance_wrap_int(result)
+
+
+cdef Instance * __greater_than_or_equal(Engine *engine, Node *vargs, Frame *frame):
+    cdef:
+        List *args = resolve_all(engine, vargs, frame)
+        Node *arg_cursor = args.head
+        Instance *inst_a
+        Instance *inst_b
+        int int_a, int_b, result = False
+
+    inst_a = arg_cursor.value
+    arg_cursor = arg_cursor.next
+    inst_b = arg_cursor.value
+
+    if inst_a.type == TYPE_NUMBER and inst_b.type == TYPE_NUMBER:
+        int_a = ptr_void_to_int(inst_a.data)
+        int_b = ptr_void_to_int(inst_b.data)
+
+        result = (int_a >= int_b)
+
+    return instance_wrap_int(result)
+
+
+cdef Instance * __conditional(Engine *engine, Node *vargs, Frame *frame):
+    cdef:
+        Instance *conditional_result = resolve(engine, vargs, frame)
+        Node *arg_cursor = vargs.next
+
+    if (<int *> conditional_result.data)[0] == True:
+        return resolve(engine, arg_cursor, frame)
+    elif arg_cursor.next != NULL:
+        return resolve(engine, arg_cursor.next, frame)
+
+    return NULL
 
 
 cdef Instance * __accumulate(Engine *engine, Node *vargs, Frame *frame):
     cdef:
-        List *args = __resolve(engine, vargs, frame)
+        List *args = resolve_all(engine, vargs, frame)
         Node *arg_cursor = args.head
         Instance *inst_a
         Instance *inst_b
@@ -66,12 +183,72 @@ cdef Instance * __accumulate(Engine *engine, Node *vargs, Frame *frame):
     int_b = (<int *> inst_b.data)[0]
 
     result = int_a + int_b
-    return instance_wrap_int(result, TYPE_NUMBER)
+    return instance_wrap_int(result)
+
+
+cdef Instance * __product(Engine *engine, Node *vargs, Frame *frame):
+    cdef:
+        List *args = resolve_all(engine, vargs, frame)
+        Node *arg_cursor = args.head
+        Instance *inst_a
+        Instance *inst_b
+        int int_a, int_b, result
+
+    inst_a = <Instance *> arg_cursor.value
+    int_a = (<int *> inst_a.data)[0]
+
+    arg_cursor = arg_cursor.next
+
+    inst_b = <Instance *> arg_cursor.value
+    int_b = (<int *> inst_b.data)[0]
+
+    result = int_a * int_b
+    return instance_wrap_int(result)
+
+
+cdef Instance * __subtract(Engine *engine, Node *vargs, Frame *frame):
+    cdef:
+        List *args = resolve_all(engine, vargs, frame)
+        Node *arg_cursor = args.head
+        Instance *inst_a
+        Instance *inst_b
+        int int_a, int_b, result
+
+    inst_a = <Instance *> arg_cursor.value
+    int_a = (<int *> inst_a.data)[0]
+
+    arg_cursor = arg_cursor.next
+
+    inst_b = <Instance *> arg_cursor.value
+    int_b = (<int *> inst_b.data)[0]
+
+    result = int_a - int_b
+    return instance_wrap_int(result)
+
+
+cdef Instance * __quotient(Engine *engine, Node *vargs, Frame *frame):
+    cdef:
+        List *args = resolve_all(engine, vargs, frame)
+        Node *arg_cursor = args.head
+        Instance *inst_a
+        Instance *inst_b
+        int int_a, int_b, result
+
+    inst_a = <Instance *> arg_cursor.value
+    int_a = (<int *> inst_a.data)[0]
+
+    arg_cursor = arg_cursor.next
+
+    inst_b = <Instance *> arg_cursor.value
+    int_b = (<int *> inst_b.data)[0]
+
+    result = int_a / int_b
+    return instance_wrap_int(result)
 
 
 cdef Instance * __print_function(Engine *engine, Node *vargs, Frame *frame):
     cdef:
-        List *args = __resolve(engine, vargs, frame)
+        List *args = resolve_all(engine, vargs, frame)
         Node *arg_cursor = args.head
         Instance *arg_inst
 

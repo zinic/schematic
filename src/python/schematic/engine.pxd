@@ -17,6 +17,9 @@ ctypedef struct Frame:
     List *scope_stack
 
 
+cdef Instance * resolve(Engine *, Node *, Frame *)
+cdef List * resolve_all(Engine *, Node *, Frame *)
+
 cdef Engine * engine_new()
 cdef Instance * engine_leval(Engine *, List *, Frame *)
 cdef Instance * engine_eval(Engine *, Instance *, Node *, Frame *)

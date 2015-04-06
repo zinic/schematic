@@ -77,11 +77,15 @@ cdef Instance *EMPTY_INSTANCE
 cdef Node *EMPTY_NODE
 
 
+# Helper functions
+cdef int ptr_void_to_int(void *)
+
+
 # Instance functions
 cdef void instance_print(Instance *)
 
 cdef Instance * instance_wrap_ptr(void *, Type)
-cdef Instance * instance_wrap_int(int, Type)
+cdef Instance * instance_wrap_int(int)
 
 cdef void instance_free(Instance *)
 

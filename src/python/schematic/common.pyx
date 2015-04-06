@@ -7,12 +7,31 @@ TYPE_SYMBOL = 0
 TYPE_STRING = 1
 TYPE_NUMBER = 2
 TYPE_LIST = 3
-
-TYPE_NATIVE_FUNC = 10
-TYPE_DYNAMIC_FUNC = 11
+TYPE_NATIVE_FUNC = 4
+TYPE_DYNAMIC_FUNC = 5
 
 EMPTY_INSTANCE = <Instance *> NULL
 EMPTY_NODE = <Node *> NULL
+
+
+cdef char * type_to_str(Type t):
+    if t == TYPE_SYMBOL:
+        return 'Symbol'
+
+    elif t == TYPE_STRING:
+        return 'String'
+
+    elif t == TYPE_NUMBER:
+        return 'Number'
+
+    elif t == TYPE_LIST:
+        return 'List'
+
+    elif t == TYPE_NATIVE_FUNC:
+        return 'native_function'
+
+    elif t == TYPE_DYNAMIC_FUNC:
+        return 'dynamic_function'
 
 
 # Simple functions
@@ -31,6 +50,11 @@ cdef int str_int_val(char *str, size_t length):
     return val
 
 
+cdef int ptr_void_to_int(void *ptr):
+    cdef int *iptr = <int *> ptr
+    return iptr[0]
+
+
 # Instance functions
 cdef void instance_print(Instance *instance):
     cdef Type instance_type
@@ -40,17 +64,25 @@ cdef void instance_print(Instance *instance):
     else:
         instance_type = instance.type
 
+        printf('type:%s -> ', type_to_str(instance_type))
+
         if instance_type == TYPE_SYMBOL:
-            printf('sym:%s', instance.data)
+            printf('%s', instance.data)
 
         elif instance_type == TYPE_STRING:
             printf('"%s"', instance.data)
 
         elif instance_type == TYPE_NUMBER:
-            printf('"%n"', (<int *> instance.data)[0])
+            printf('%i', (<int *> instance.data)[0])
 
         elif instance_type == TYPE_LIST:
-            printf('list(%i)', (<List *> instance.data).length)
+            printf('size: %i', (<List *> instance.data).length)
+
+        elif instance_type == TYPE_NATIVE_FUNC:
+            printf('%u', instance.data)
+
+        elif instance_type == TYPE_DYNAMIC_FUNC:
+            printf('%s', (<DynamicFunction *> instance.data).symbol.data)
 
         else:
             printf('unknown_type(%i)', instance_type)
@@ -65,14 +97,14 @@ cdef Instance * instance_wrap_ptr(void *value, Type type):
     return new_instance
 
 
-cdef Instance * instance_wrap_int(int value, Type type):
+cdef Instance * instance_wrap_int(int value):
     cdef int *int_ptr = <int *> malloc(sizeof(int))
     int_ptr[0] = value
 
     cdef Instance *new_instance = <Instance *> malloc(sizeof(Instance))
 
     new_instance.data = <void *> int_ptr
-    new_instance.type = type
+    new_instance.type = TYPE_NUMBER
 
     return new_instance
 
