@@ -3,7 +3,7 @@ import copy
 from schematic.util import resolve
 
 from schematic.lang.errors import CoreError
-from schematic.lang.types import Symbol, List, Function
+from schematic.lang.types import Symbol, Function
 
 
 _EMPTY_CONTEXT = tuple()
@@ -22,11 +22,12 @@ class InterpretedFunction(Function):
 
     def run(self, engine, vparams, scope):
         func_scope = copy.copy(scope)
-        params = resolve(engine, func_scope, vparams)
 
-        if len(params) > 0:
-            for i in range(len(self.parameters)):
-                func_scope[self.parameters[i].name] = params[i]
+        i = 0
+        for param in resolve(engine, func_scope, vparams):
+            pname = self.parameters[i].name
+            func_scope[pname] = param
+            i += 1
 
         return engine.lcall(
             code=self.code,
@@ -60,7 +61,7 @@ class Engine(object):
     def lcall(self, code, vscope=None, a=None):
         scope = vscope if vscope is not None else self._gs
 
-        if isinstance(code, List):
+        if isinstance(code, list):
             return self.call(code[0], code[1:], scope)
 
         return self.call(code, _EMPTY_CONTEXT, scope)
@@ -73,10 +74,13 @@ class Engine(object):
             sym_ref = lookup(scope, instruction.name)
 
             if isinstance(sym_ref, Function):
+                #print('call {}({})'.format(instruction, params))
                 return sym_ref.run(self, params, scope)
             else:
+                #print('symbol {} -> {}'.format(instruction, sym_ref))
                 return sym_ref
         else:
+            #print('statement {}'.format(instruction))
             return instruction
 
 

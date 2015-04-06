@@ -3,7 +3,9 @@ docs/_build/
 build/
 dist/
 .coverage
+*.html
 *.pyc
+*.c
 *.so
 .idea
 *.egg-info/
