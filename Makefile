@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -std=c11 -Wall -I ./src/c/ -I includes/uthash/src/
+CFLAGS = -std=c11 -Wall -I ./src/c/ -I ./src/tests -I includes/uthash/src/
 BIN = schematic
 
-C_FILES := $(wildcard src/c/*.c)
+C_FILES := $(wildcard src/**/*.c)
 OBJECTS := $(patsubst %.c,%.o, $(C_FILES))
 
 
@@ -28,7 +28,7 @@ callgrind: debug
 
 test: CFLAGS += -D TEST
 test: debug
-	./$(BIN) ./src/schematic/hello_world.sch
+	./$(BIN)
 
 gdb: debug
 	gdb -ex r --args ./$(BIN) ./src/schematic/hello_world.sch
