@@ -14,7 +14,7 @@ def read(relative):
 def compile_pyx():
     # chdir so that cython is happy
     os.chdir('src/python')
-    return cythonize('schematic/*.pyx')
+    return cythonize('schematic/*.pyx', gdb_debug=True)
 
 
 setup(

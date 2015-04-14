@@ -16,3 +16,8 @@ dist/
 nosetests.xml
 */coverage.xml
 *.komodoproject
+*.cbp
+*.layout
+schematic
+*.o
+*.so
