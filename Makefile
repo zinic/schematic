@@ -37,3 +37,4 @@ clean:
 	$(RM) callgrind.out.*
 	$(RM) schematic
 	$(RM) ./src/c/*.o
+	$(RM) ./src/tests/*.o

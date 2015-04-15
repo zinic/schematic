@@ -11,8 +11,8 @@ extern "C" {
 
 #define EMPTY_NODE NULL
 
-#define UNBOX(type, box) ((type *) (box == NULL ? NULL : ((Box *)box)->data))
-#define AS_STRING(str) (String_wrap(str, strlen(str)))
+#define UNBOX(type, box) ((type *) ((Box *)box)->data)
+#define AS_STRING(str) (String_wrapn(str, strlen(str)))
 
 
 // Everyone does it
@@ -24,7 +24,7 @@ struct String {
 };
 
 String * String_new(size_t size);
-String * String_wrap(char *data, size_t size);
+String * String_wrap(char *data);
 String * String_wrapn(char *data, size_t size);
 int String_hash_code(String *);
 void String_free(String *string);

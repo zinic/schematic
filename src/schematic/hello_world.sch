@@ -1,1 +1,3 @@
-[print "Hello world!\n"]
+[def HelloWorld [] [print "Hello world!\n"]]
+
+[HelloWorld]
