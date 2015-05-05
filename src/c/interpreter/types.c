@@ -1,4 +1,4 @@
- #include "types.h"
+#include "types.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,41 +10,13 @@ const char * Type_name(Type type) {
     return TYPE_NAMES[type];
 }
 
-void free_boxed_list(List *list) {
-    Node *cursor = list->head;
-    Box *box;
-
-    while (cursor != EMPTY_NODE) {
-        box = (Box *) Node_advance(&cursor);
-
-        if (box == NULL) {
-            printf("Null box reference!");
-            continue;
-        }
-
-        if (box->type == TYPE_LIST) {
-            free_boxed_list(UNBOX(List, box));
-        } else if (box->type == TYPE_SYMBOL || box->type == TYPE_STRING) {
-            String_free(UNBOX(String, box));
-        } else if (box->type == TYPE_NUMBER) {
-            free(box->data);
-        } else {
-            printf("Unable to free type(%i:%s)!\n", box->type, Type_name(box->type));
-        }
-
-        Box_free(box);
-    }
-
-    List_free(list);
-}
-
 void print_boxed_list(List *list) {
     Node *cursor = list->head;
     Box *box;
 
     printf("[");
 
-    while (cursor != EMPTY_NODE) {
+    while (cursor != NULL) {
         box = (Box *) Node_advance(&cursor);
 
         if (box->type == TYPE_NULL) {
@@ -59,56 +31,12 @@ void print_boxed_list(List *list) {
             printf("number:%f", *UNBOX(double, box));
         }
 
-        if (cursor != EMPTY_NODE) {
+        if (cursor != NULL) {
             printf(" ");
         }
     }
 
     printf("]");
-}
-
-String * String_new(size_t size) {
-    String *new_string = (String *) malloc(sizeof(String));
-    char *data = (char *) malloc(sizeof(char) * size);
-
-    new_string->size = size;
-    new_string->data = data;
-
-    return new_string;
-}
-
-String * String_wrap(char *data) {
-    String *new_string = (String *) malloc(sizeof(String));
-
-    new_string->size = strlen(data);
-    new_string->data = data;
-
-    return new_string;
-}
-
-String * String_wrapn(char *data, size_t size) {
-    String *new_string = (String *) malloc(sizeof(String));
-
-    new_string->size = size;
-    new_string->data = data;
-
-    return new_string;
-}
-
-
-int String_hash_code(String *string) {
-    int code = 15485863;
-
-    for (int i = 0; i < string->size; i++) {
-        code += string->data[i];
-    }
-
-    return code;
-}
-
-void String_free(String *string) {
-    free(string->data);
-    free(string);
 }
 
 Box * Box_new() {
@@ -140,8 +68,8 @@ Node * Node_new() {
     Node *new_node = (Node *) malloc(sizeof(Node));
 
     new_node->value = NULL;
-    new_node->next = EMPTY_NODE;
-    new_node->previous = EMPTY_NODE;
+    new_node->next = NULL;
+    new_node->previous = NULL;
 
     return new_node;
 }
@@ -178,8 +106,8 @@ List * List_new() {
     List *new_list = (List *) malloc(sizeof(List));
 
     new_list->size = 0;
-    new_list->head = EMPTY_NODE;
-    new_list->tail = EMPTY_NODE;
+    new_list->head = NULL;
+    new_list->tail = NULL;
 
     return new_list;
 }
@@ -189,7 +117,7 @@ Node * List_head(List *list) {
 }
 
 Node * List_tail(List *list) {
-    return list->tail != EMPTY_NODE ? list->tail : list->head;
+    return list->tail != NULL ? list->tail : list->head;
 }
 
 void List_append(List *list, void *value) {
@@ -198,9 +126,9 @@ void List_append(List *list, void *value) {
 
     list->size += 1;
 
-    if (list->head == EMPTY_NODE) {
+    if (list->head == NULL) {
         list->head = new_node;
-    } else if(list->tail == EMPTY_NODE) {
+    } else if(list->tail == NULL) {
         list->tail = new_node;
         Node_link(list->head, list->tail);
     } else {
@@ -213,20 +141,20 @@ void * List_pop(List *list) {
     void *value = NULL;
     Node *node_ref;
 
-    if (list->head != EMPTY_NODE) {
+    if (list->head != NULL) {
         list->size -= 1;
 
-        if (list->tail != EMPTY_NODE) {
+        if (list->tail != NULL) {
             // Grab the node and the value
             node_ref = list->tail;
             value = node_ref->value;
 
             if (list->head == list->tail->previous) {
-                list->tail = EMPTY_NODE;
-                list->head->next = EMPTY_NODE;
+                list->tail = NULL;
+                list->head->next = NULL;
             } else {
                 list->tail = list->tail->previous;
-                list->tail->next = EMPTY_NODE;
+                list->tail->next = NULL;
             }
 
             Node_free(node_ref);
@@ -234,7 +162,7 @@ void * List_pop(List *list) {
             value = list->head->value;
             Node_free(list->head);
 
-            list->head = EMPTY_NODE;
+            list->head = NULL;
         }
     }
 
@@ -244,7 +172,7 @@ void * List_pop(List *list) {
 void List_free(List *list) {
     Node *cursor = list->head, *free_target;
 
-    while (cursor != EMPTY_NODE) {
+    while (cursor != NULL) {
         free_target = cursor;
         cursor = cursor->next;
 

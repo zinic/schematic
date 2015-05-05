@@ -4,8 +4,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+    
+#include <stdbool.h>
 
-void load_std_grammar(Frame *target);
+#include "types.h"
+
+void load_std_grammar(Frame *frame);
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "test.h"
 
@@ -26,14 +25,14 @@ TestSuite * TestSuite_new(String *name) {
     TestSuite *suite = (TestSuite *) malloc(sizeof(TestSuite));
     
     suite->name = name;
-    suite->tests = List_new();
+    suite->tests = SList_new();
     
     return suite;
 }
 
 void run_tests() {
     test_init;
-    #include "types.c_test"
+    #include "specs/structures.c"
 
     tests_exec;
 }

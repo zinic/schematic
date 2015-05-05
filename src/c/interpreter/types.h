@@ -9,25 +9,9 @@ extern "C" {
 #include <stdbool.h>
 #include <sys/types.h>
 
-#define EMPTY_NODE NULL
-
+#include "structures.h"
+    
 #define UNBOX(type, box) ((type *) ((Box *)box)->data)
-#define AS_STRING(str) (String_wrapn(str, strlen(str)))
-
-
-// Everyone does it
-typedef struct String String;
-
-struct String {
-    size_t size;
-    char *data;
-};
-
-String * String_new(size_t size);
-String * String_wrap(char *data);
-String * String_wrapn(char *data, size_t size);
-int String_hash_code(String *);
-void String_free(String *string);
 
 // Type defs
 typedef unsigned int Type;
@@ -39,9 +23,10 @@ static const Type TYPE_STRING = 3;
 static const Type TYPE_NUMBER = 4;
 static const Type TYPE_NATIVE_FUNC = 5;
 static const Type TYPE_DYNAMIC_FUNC = 6;
+static const Type TYPE_BOX = 7;
 
 static const char * const TYPE_NAMES[] = {
-    "null", "list", "symbol", "string", "number"
+    "null", "list", "symbol", "string", "number", "native_func", "dynamic_func", "box"
 };
 
 const char * Type_name(Type type);
@@ -110,7 +95,6 @@ void Box_free(Box *box);
 
 // Helpers functions
 void print_boxed_list(List *list);
-void free_boxed_list(List *list);
 
 #ifdef __cplusplus
 }

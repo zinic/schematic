@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -std=c11 -Wall -I ./src/c/ -I ./src/tests -I includes/uthash/src/
+CFLAGS = $(FLAGS) -std=gnu11 -Wall -I ./src/c/ -I ./src/c/interpreter -I ./src/tests/ -I includes/uthash/src/
 BIN = schematic
 
-C_FILES := $(wildcard src/**/*.c)
+C_FILES := $(shell find ./src -not -path './src/tests/specs/*' -name '*.c')
 OBJECTS := $(patsubst %.c,%.o, $(C_FILES))
 
 
@@ -17,13 +17,11 @@ debug: CFLAGS += -g
 debug: $(OBJECTS)
 	$(CC) $(CFLAGS) -o $(BIN) $(OBJECTS)
 
-valgrind: CFLAGS += -D CALLGRIND
 valgrind: debug
-	valgrind --track-origins=yes --leak-check=yes ./$(BIN) ./src/schematic/callgrind_test.sch
+	valgrind --track-origins=yes --leak-check=yes ./$(BIN) ./src/schematic/hello_world.sch
 
-callgrind: CFLAGS += -D CALLGRIND
 callgrind: debug
-	valgrind --dsymutil=yes --tool=callgrind ./$(BIN) ./src/schematic/callgrind_test.sch
+	valgrind --dsymutil=yes --tool=callgrind ./$(BIN) ./src/schematic/hello_world.sch
 	callgrind_annotate callgrind.out.*
 
 test: CFLAGS += -D TEST

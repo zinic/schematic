@@ -8,6 +8,14 @@ extern "C" {
 #include <uthash.h>
 #include "types.h"
 
+#define RES_UNBOX(type, resolution) UNBOX(type, ((Resolution *) resolution)->box)
+    
+#define with_resolved_args(args, local, cursor, ...)\
+    List *__ra__ = resolve_args(args, local);\
+    cursor = __ra__->head;\
+    __VA_ARGS__\
+    free_resolved_args(__ra__);
+
 
 // Dynamic function defs
 typedef struct DynamicFunction DynamicFunction;
@@ -22,30 +30,33 @@ struct DynamicFunction {
 DynamicFunction * DynamicFunction_new(Box *symbol, List *parameter_defs, List *code);
 void DynamicFunction_free(DynamicFunction *dyn_func);
 
+void rfree(Type type, void *ptr);
+void rfree_box(Box *box);
 
 // Type boxing
-typedef struct BoxScope BoxScope;
+typedef struct FrameBinding FrameBinding;
 
-struct BoxScope {
+struct FrameBinding {
     Box *box;
     int id;
 
     UT_hash_handle hh;
 };
 
-BoxScope * BoxScope_new(String *name, Box *box);
+FrameBinding * BoxScope_new(String *name, Box *box);
 
 
 // Frame defs
 typedef struct Frame Frame;
 
 struct Frame {
-    BoxScope *scope_map;
+    FrameBinding *scope_map;
 };
 
 Frame * Frame_new();
 void Frame_put(Frame *frame, String *name, Box *box);
 Box * Frame_get(Frame *frame, String *name);
+Box * Frame_remove(Frame *frame, String *name);
 void Frame_free(Frame *frame);
 
 
@@ -63,6 +74,18 @@ void Scope_put(Scope *scope, String *scope_name, Box *box);
 Frame * Scope_descend(Scope *scope);
 void Scope_ascend(Scope *scope);
 void Scope_free(Scope *scope);
+
+
+// Resolution management
+typedef struct Resolution Resolution;
+
+struct Resolution {
+    Box *box;
+    bool reclaimable;
+};
+
+List * resolve_args(Node *args, Scope *local);
+void free_resolved_args(List *resolved_args);
 
 
 // Core functions

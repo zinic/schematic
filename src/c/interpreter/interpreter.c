@@ -21,8 +21,8 @@ void DynamicFunction_free(DynamicFunction *dyn_func) {
     free(dyn_func);
 }
 
-BoxScope * BoxScope_new(String *name, Box *box) {
-    BoxScope *new_sbox = (BoxScope *) malloc(sizeof(BoxScope));
+FrameBinding * BoxScope_new(String *name, Box *box) {
+    FrameBinding *new_sbox = (FrameBinding *) malloc(sizeof(FrameBinding));
 
     new_sbox->id= String_hash_code(name);
     new_sbox->box = box;
@@ -30,7 +30,7 @@ BoxScope * BoxScope_new(String *name, Box *box) {
     return new_sbox;
 }
 
-void BoxScope_free(BoxScope *sbox) {
+void BoxScope_free(FrameBinding *sbox) {
     free(sbox);
 }
 
@@ -42,7 +42,7 @@ Frame * Frame_new() {
 }
 
 void Frame_put(Frame *frame, String *scope_name, Box *box) {
-    BoxScope *new_scope = BoxScope_new(scope_name, box);
+    FrameBinding *new_scope = BoxScope_new(scope_name, box);
 
     HASH_ADD_INT(
         frame->scope_map,
@@ -52,8 +52,7 @@ void Frame_put(Frame *frame, String *scope_name, Box *box) {
 
 Box * Frame_get(Frame *frame, String *scope_name) {
     const int sname_hash = String_hash_code(scope_name);
-
-    BoxScope *sbox;
+    FrameBinding *sbox;
 
     HASH_FIND_INT(
         frame->scope_map,
@@ -63,13 +62,68 @@ Box * Frame_get(Frame *frame, String *scope_name) {
     return sbox != NULL ? sbox->box : NULL;
 }
 
-void Frame_free(Frame *frame) {
-    BoxScope *sbox, *tmp;
+Box * Frame_remove(Frame *frame, String *scope_name) {
+    const int sname_hash = String_hash_code(scope_name);
+    FrameBinding *sbox;
+    Box *value = NULL;
 
-    HASH_ITER(hh, frame->scope_map, sbox, tmp) {
+    HASH_FIND_INT(
+        frame->scope_map,
+        &sname_hash,
+        sbox);
+    
+    if (sbox != NULL) {
+        value = sbox->box;
+        
         HASH_DEL(frame->scope_map, sbox);
         BoxScope_free(sbox);
     }
+        
+    return value; 
+}
+
+void rfree(Type type, void *ptr) {
+    if (type == TYPE_BOX) {
+        Box *box = (Box *) ptr;
+        rfree(box->type, box->data);
+        
+        free(box);
+    } else if (type == TYPE_LIST) {
+        List *lref = (List *) ptr;
+        Node *cursor = lref->head;
+
+        while (cursor != NULL) {
+            rfree(TYPE_BOX, Node_advance(&cursor));
+        }
+
+        List_free(lref);
+    } else if (type == TYPE_SYMBOL || type == TYPE_STRING) {
+        String_free((String *) ptr);
+    } else if (type == TYPE_NUMBER || type == TYPE_DYNAMIC_FUNC) {
+        free(ptr);
+    } else if (type != TYPE_NATIVE_FUNC) {
+        printf("Unable to free type %s!\n", Type_name(type));
+    }
+}
+
+void rfree_box(Box *box) {
+    rfree(TYPE_BOX, box);
+}
+
+void Frame_free(Frame *frame) {
+    FrameBinding *sbox, *tmp;
+
+    HASH_ITER(hh, frame->scope_map, sbox, tmp) {
+        HASH_DEL(frame->scope_map, sbox);
+        
+        // Free the inner box
+        rfree_box(sbox->box);
+        
+        // Free the scope holder
+        BoxScope_free(sbox);
+    };
+    
+    free(frame);
 }
 
 Scope * Scope_new() {
@@ -84,7 +138,7 @@ Box * Scope_get(Scope *scope, String *name) {
     Node *cursor = List_tail(scope->frames);
     Box *value = NULL;
 
-    while (cursor != EMPTY_NODE && value == NULL) {
+    while (cursor != NULL && value == NULL) {
         current_frame = (Frame *) Node_retreat(&cursor);
         value = Frame_get(current_frame, name);
     }
@@ -110,28 +164,69 @@ void Scope_ascend(Scope *scope) {
 }
 
 void Scope_free(Scope *scope) {
-    Node *cursor = List_head(scope->frames);
+    Node *cursor = scope->frames->head;
 
-    while (cursor != EMPTY_NODE) {
-        Frame_free((Frame *) cursor->value);
+    while (cursor != NULL) {
+        Frame_free((Frame *) Node_advance(&cursor));
     }
 
     List_free(scope->frames);
     free(scope);
 }
 
-Box * resolve(Box *instruction, Scope *local) {
-    Box *retval = instruction;
+List * resolve_args(Node *args, Scope *local) {
+    List *resolved_args = List_new();
+    Node *cursor = args;
+    Box *arg_box;
 
-    if (instruction->type == TYPE_SYMBOL) {
-        retval = Scope_get(local, (String *) instruction->data);
+    while (cursor != NULL) {
+        Resolution *resolution = (Resolution *) malloc(sizeof(Resolution));
+        
+        // Resolutions are not reclaimable by default
+        resolution->reclaimable = false;
+        
+        // Next argument box
+        arg_box = (Box *) Node_advance(&cursor);
 
-        if (retval == NULL) {
-            printf("Undefined symbol: %s\n", UNBOX(String, instruction)->data);
-            exit(1);
+        // Resolve if need be
+        if (arg_box->type == TYPE_SYMBOL) {
+            resolution->box = resolve(arg_box, local);
+        } else if (arg_box->type == TYPE_LIST) {
+            resolution->box = evaluate(UNBOX(List, arg_box), local);
+            resolution->reclaimable = resolution->box != NULL;
+        } else {
+            resolution->box = arg_box;
         }
-    } else if (instruction->type == TYPE_LIST) {
-        retval = evaluate(UNBOX(List, instruction), local);
+        
+        List_append(resolved_args, resolution);
+    }
+    
+    return resolved_args;
+}
+
+void free_resolved_args(List *resolved_args) {
+    Node *cursor = resolved_args->head;
+    
+    while (cursor != NULL) {
+        Resolution *resolution = (Resolution *) Node_advance(&cursor);
+        
+        if (resolution->reclaimable) {
+            // Free the box associated with this resolution
+            rfree_box(resolution->box);
+        }
+        
+        free(resolution);
+    }
+    
+    List_free(resolved_args);
+}
+
+Box * resolve(Box *instruction, Scope *local) {
+    Box *retval = Scope_get(local, (String *) instruction->data);
+
+    if (retval == NULL) {
+        printf("Undefined symbol: %s\n", UNBOX(String, instruction)->data);
+        exit(1);
     }
 
     return retval;
@@ -147,7 +242,7 @@ Box * _sch_dynamic_call(DynamicFunction *function_def, Node *args, Scope *local)
     Node *param_cursor = args;
     Box *retval = NULL;
 
-    while (param_def_cursor != EMPTY_NODE) {
+    while (param_def_cursor != NULL) {
         String *name = UNBOX(String, Node_advance(&param_def_cursor));
         Box *value = resolve((Box *) Node_advance(&param_cursor), local);
         
@@ -183,6 +278,6 @@ Box * evaluate(List *code, Scope *local) {
             exit(1);
         }
     }
-
+    
     return retval;
 }

@@ -9,7 +9,7 @@ extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "types.h"
+#include "structures.h"
 
 typedef struct TestResult TestResult;
 
@@ -31,7 +31,7 @@ typedef struct TestSuite TestSuite;
 
 struct TestSuite {
     String *name;
-    List *tests;
+    SList *tests;
 };
 
 struct Test {
@@ -52,18 +52,20 @@ Test * Test_new(String *name, test_cb func);
     }\
 
 #define test_init\
-    List *__TESTS__ = List_new();\
-    Node *__cursor__;\
+    SList *__TESTS__ = SList_new();\
+    SNode *__cursor__;\
     TestSuite *__suite__
 
 #define tests_exec\
     __cursor__ = __TESTS__->head;\
-    while (__cursor__ != EMPTY_NODE) {\
-        TestSuite *suite_ref = (TestSuite *) Node_advance(&__cursor__);\
+    while (__cursor__ != NULL) {\
+        TestSuite *suite_ref = (TestSuite *) __cursor__->value;\
+        __cursor__ = __cursor__->next;\
         printf("\nWhen %s\n", suite_ref->name->data);\
-        Node *suite_cursor = suite_ref->tests->head;\
-        while (suite_cursor != EMPTY_NODE) {\
-            Test *test_ref = (Test *) Node_advance(&suite_cursor);\
+        SNode *suite_cursor = suite_ref->tests->head;\
+        while (suite_cursor != NULL) {\
+            Test *test_ref = (Test *) suite_cursor->value;\
+            suite_cursor = suite_cursor->next;\
             printf("\tSpec: %s", test_ref->name->data);\
             TestResult *result = test_ref->func();\
             if (result->retval != 0) {\
@@ -76,17 +78,17 @@ Test * Test_new(String *name, test_cb func);
     }
     
 #define when(suite, ...)\
-    __suite__ = TestSuite_new(AS_STRING(#suite));\
+    __suite__ = TestSuite_new(String_wrap(#suite));\
     void suite() __VA_ARGS__\
     suite();\
-    List_append(__TESTS__, __suite__);
+    SList_append(__TESTS__, __suite__);
 
 #define should(spec, ...)\
     TestResult * spec() {\
         __VA_ARGS__\
         return OK;\
     }\
-    List_append(__suite__->tests, Test_new(AS_STRING(#spec), &spec));
+    SList_append(__suite__->tests, Test_new(String_wrap(#spec), &spec));
 
 void run_tests();
 
